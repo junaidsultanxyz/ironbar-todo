@@ -1,7 +1,7 @@
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 
 pub fn get_socket_path() -> PathBuf {
@@ -144,7 +144,10 @@ mod tests {
 
     #[test]
     fn test_ipc_command_parsing() {
-        assert_eq!(IpcCommand::from_str("toggle"), Some(IpcCommand::Toggle(None)));
+        assert_eq!(
+            IpcCommand::from_str("toggle"),
+            Some(IpcCommand::Toggle(None))
+        );
         assert_eq!(
             IpcCommand::from_str("toggle:500,20"),
             Some(IpcCommand::Toggle(Some((500, 20))))

@@ -9,12 +9,11 @@ use gtk4::{
     Label, Orientation, PolicyType, ScrolledWindow, StringList, ToggleButton,
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-
-use crate::todo_cli::{TaskItem, TaskType, TodoClient};
+use todo::task::{Task, TaskType};
+use todo::{TaskListFilter, add_task, clear_list, delete_task, get_tasks, toggle_task_status};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub client: TodoClient,
     pub show_basic: bool,
     pub show_daily: bool,
 }
@@ -40,18 +39,19 @@ impl TodoWidget {
             .css_classes(["todo-popup"])
             .build();
 
+        let popup_gap = get_popup_gap();
+
         // Configure Layer Shell for Wayland/Hyprland
         window.init_layer_shell();
         window.set_layer(Layer::Overlay);
         window.set_namespace(Some("ironbar-todo"));
         window.set_anchor(Edge::Top, true);
         window.set_anchor(Edge::Right, true);
-        window.set_margin(Edge::Top, 28);
+        window.set_margin(Edge::Top, popup_gap);
         window.set_margin(Edge::Right, 12);
         window.set_keyboard_mode(KeyboardMode::OnDemand);
 
         let state = Rc::new(RefCell::new(AppState {
-            client: TodoClient::new(),
             show_basic: true,
             show_daily: true,
         }));
@@ -83,7 +83,7 @@ impl TodoWidget {
         header_bar.append(&basic_btn);
         header_bar.append(&daily_btn);
 
-        // Clear All tasks button (todo clear)
+        // Clear All tasks button
         let clear_btn = Button::with_label("Clear All");
         clear_btn.add_css_class("clear-btn");
         clear_btn.set_tooltip_text(Some("Delete all tasks (todo clear)"));
@@ -196,8 +196,7 @@ impl TodoWidget {
             let text = entry_clone.text().trim().to_string();
             if !text.is_empty() {
                 let is_daily = dropdown_clone.selected() == 1;
-                let client = { w_clone.state.borrow().client.clone() };
-                if let Err(e) = client.add(&text, is_daily) {
+                if let Err(e) = add_task(&text, is_daily) {
                     eprintln!("Failed to add task: {e}");
                 } else {
                     entry_clone.set_text("");
@@ -232,8 +231,7 @@ impl TodoWidget {
         // Clear button handler
         let w_clear = Rc::clone(&widget);
         clear_btn.connect_clicked(move |_| {
-            let client = { w_clear.state.borrow().client.clone() };
-            if let Err(e) = client.clear() {
+            if let Err(e) = clear_list() {
                 eprintln!("Failed to clear tasks: {e}");
             } else {
                 w_clear.refresh();
@@ -247,10 +245,11 @@ impl TodoWidget {
     }
 
     pub fn update_position(&self, coords: Option<(i32, i32)>) {
+        let gap = get_popup_gap();
         let Some((cx, cy)) = coords else {
             self.window.set_anchor(Edge::Right, true);
             self.window.set_anchor(Edge::Left, false);
-            self.window.set_margin(Edge::Top, 28);
+            self.window.set_margin(Edge::Top, gap);
             self.window.set_margin(Edge::Right, 12);
             return;
         };
@@ -274,7 +273,7 @@ impl TodoWidget {
                         self.window.set_anchor(Edge::Left, true);
                         self.window.set_anchor(Edge::Right, false);
                         self.window.set_margin(Edge::Left, target_x);
-                        self.window.set_margin(Edge::Top, 28);
+                        self.window.set_margin(Edge::Top, gap);
                         return;
                     }
                 }
@@ -283,7 +282,7 @@ impl TodoWidget {
 
         self.window.set_anchor(Edge::Right, true);
         self.window.set_anchor(Edge::Left, false);
-        self.window.set_margin(Edge::Top, 28);
+        self.window.set_margin(Edge::Top, gap);
         self.window.set_margin(Edge::Right, 12);
     }
 
@@ -311,80 +310,13 @@ impl TodoWidget {
     }
 
     pub fn refresh(&self) {
-        // Clear current boxes
-        while let Some(child) = self.remaining_box.first_child() {
-            self.remaining_box.remove(&child);
-        }
-        while let Some(child) = self.completed_box.first_child() {
-            self.completed_box.remove(&child);
-        }
-
-        let (show_basic, show_daily, tasks) = {
-            let state = self.state.borrow();
-            let tasks = match state.client.list_all() {
-                Ok(t) => t,
-                Err(err) => {
-                    eprintln!("Error fetching tasks: {err}");
-                    Vec::new()
-                }
-            };
-            (state.show_basic, state.show_daily, tasks)
-        };
-
-        let mut remaining_count = 0;
-        let mut completed_count = 0;
-
-        for task in tasks {
-            // Apply task type filter
-            let passes_type = match task.task_type {
-                TaskType::Basic => show_basic,
-                TaskType::Daily => show_daily,
-            };
-
-            if !passes_type {
-                continue;
-            }
-
-            if task.is_completed {
-                completed_count += 1;
-                let row = self.create_task_row(&task);
-                self.completed_box.append(&row);
-            } else {
-                remaining_count += 1;
-                let row = self.create_task_row(&task);
-                self.remaining_box.append(&row);
-            }
-        }
-
-        self.remaining_header
-            .set_text(&format!("REMAINING ({remaining_count})"));
-        self.completed_header
-            .set_text(&format!("COMPLETED ({completed_count})"));
-
-        if remaining_count == 0 {
-            let empty_lbl = Label::new(Some("No remaining tasks"));
-            empty_lbl.add_css_class("empty-label");
-            empty_lbl.set_xalign(0.0);
-            self.remaining_box.append(&empty_lbl);
-        }
-
-        if completed_count == 0 {
-            let empty_lbl = Label::new(Some("No completed tasks"));
-            empty_lbl.add_css_class("empty-label");
-            empty_lbl.set_xalign(0.0);
-            self.completed_box.append(&empty_lbl);
-        }
-    }
-
-    fn create_task_row(&self, task: &TaskItem) -> Box {
-        Self::create_row_static(
-            task,
+        Self::refresh_with_state(
             &self.state,
             &self.remaining_box,
             &self.completed_box,
             &self.remaining_header,
             &self.completed_header,
-        )
+        );
     }
 
     fn refresh_with_state(
@@ -401,17 +333,12 @@ impl TodoWidget {
             completed_box.remove(&child);
         }
 
-        let (show_basic, show_daily, tasks) = {
+        let (show_basic, show_daily) = {
             let state = state_rc.borrow();
-            let tasks = match state.client.list_all() {
-                Ok(t) => t,
-                Err(err) => {
-                    eprintln!("Error fetching tasks: {err}");
-                    Vec::new()
-                }
-            };
-            (state.show_basic, state.show_daily, tasks)
+            (state.show_basic, state.show_daily)
         };
+
+        let tasks = get_tasks(TaskListFilter::All, None).unwrap_or_default();
 
         let mut remaining_count = 0;
         let mut completed_count = 0;
@@ -426,27 +353,20 @@ impl TodoWidget {
                 continue;
             }
 
+            let row = Self::create_row(
+                &task,
+                state_rc,
+                remaining_box,
+                completed_box,
+                remaining_header,
+                completed_header,
+            );
+
             if task.is_completed {
                 completed_count += 1;
-                let row = Self::create_row_static(
-                    &task,
-                    state_rc,
-                    remaining_box,
-                    completed_box,
-                    remaining_header,
-                    completed_header,
-                );
                 completed_box.append(&row);
             } else {
                 remaining_count += 1;
-                let row = Self::create_row_static(
-                    &task,
-                    state_rc,
-                    remaining_box,
-                    completed_box,
-                    remaining_header,
-                    completed_header,
-                );
                 remaining_box.append(&row);
             }
         }
@@ -469,8 +389,8 @@ impl TodoWidget {
         }
     }
 
-    fn create_row_static(
-        task: &TaskItem,
+    fn create_row(
+        task: &Task,
         state_rc: &Rc<RefCell<AppState>>,
         remaining_box: &Box,
         completed_box: &Box,
@@ -497,14 +417,7 @@ impl TodoWidget {
         check.connect_toggled(move |btn| {
             let new_active = btn.is_active();
             if new_active != is_completed {
-                let client = { state_tgl.borrow().client.clone() };
-                let res = if new_active {
-                    client.done(&task_id)
-                } else {
-                    client.undone(&task_id)
-                };
-
-                if let Err(e) = res {
+                if let Err(e) = toggle_task_status(&task_id, new_active) {
                     eprintln!("Failed to toggle task status: {e}");
                 }
                 Self::refresh_with_state(&state_tgl, &rem_box, &com_box, &rem_hdr, &com_hdr);
@@ -519,11 +432,11 @@ impl TodoWidget {
         title_label.set_wrap(true);
         row.append(&title_label);
 
-        let badge_class = match task.task_type {
-            TaskType::Basic => "badge-basic",
-            TaskType::Daily => "badge-daily",
+        let (badge_class, badge_text) = match task.task_type {
+            TaskType::Basic => ("badge-basic", "basic"),
+            TaskType::Daily => ("badge-daily", "daily"),
         };
-        let badge_label = Label::new(Some(&task.task_type.to_string()));
+        let badge_label = Label::new(Some(badge_text));
         badge_label.add_css_class(badge_class);
         row.append(&badge_label);
 
@@ -539,8 +452,7 @@ impl TodoWidget {
         let com_hdr_del = completed_header.clone();
 
         delete_btn.connect_clicked(move |_| {
-            let client = { state_del.borrow().client.clone() };
-            if let Err(e) = client.delete(&task_id_del) {
+            if let Err(e) = delete_task(&task_id_del) {
                 eprintln!("Failed to delete task: {e}");
             } else {
                 Self::refresh_with_state(
@@ -556,4 +468,23 @@ impl TodoWidget {
 
         row
     }
+}
+
+pub fn get_popup_gap() -> i32 {
+    if let Some(home) = std::env::var_os("HOME") {
+        let config_path = std::path::PathBuf::from(home).join(".config/ironbar/config.toml");
+        if let Ok(content) = std::fs::read_to_string(config_path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if let Some(rest) = trimmed.strip_prefix("popup_gap") {
+                    let rest = rest.trim_start_matches(|c: char| c == '=' || c.is_whitespace());
+                    if let Ok(gap) = rest.parse::<i32>() {
+                        return gap;
+                    }
+                }
+            }
+        }
+    }
+    // Default Ironbar popup_gap is 5px
+    5
 }

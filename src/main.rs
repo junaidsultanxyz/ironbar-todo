@@ -1,6 +1,5 @@
 pub mod ipc;
 pub mod style;
-pub mod todo_cli;
 pub mod ui;
 
 use clap::{Parser, Subcommand};
@@ -10,7 +9,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::ipc::{get_cursor_pos, start_ipc_server, try_send_command, IpcCommand};
+use crate::ipc::{IpcCommand, get_cursor_pos, start_ipc_server, try_send_command};
 use crate::style::load_css;
 use crate::ui::TodoWidget;
 

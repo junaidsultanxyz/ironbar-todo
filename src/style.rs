@@ -34,9 +34,7 @@ window.todo-popup {
     border: 1px solid var(--color-dark-secondary);
     padding: 10px;
     min-width: 360px;
-    max-width: 420px;
     min-height: 400px;
-    max-height: 580px;
 }
 
 .header-bar {
