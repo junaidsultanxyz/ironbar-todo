@@ -10,7 +10,7 @@ use gtk4::prelude::*;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::ipc::{IpcCommand, start_ipc_server, try_send_command};
+use crate::ipc::{get_cursor_pos, start_ipc_server, try_send_command, IpcCommand};
 use crate::style::load_css;
 use crate::ui::TodoWidget;
 
@@ -63,16 +63,26 @@ bar = [
             return Ok(());
         }
         Commands::Toggle => {
-            if try_send_command("toggle")? {
+            let coords = get_cursor_pos();
+            let msg = if let Some((x, y)) = coords {
+                format!("toggle:{x},{y}")
+            } else {
+                "toggle".to_string()
+            };
+            if try_send_command(&msg)? {
                 return Ok(());
             }
-            // No instance running, will start GUI with window shown below
         }
         Commands::Show => {
-            if try_send_command("show")? {
+            let coords = get_cursor_pos();
+            let msg = if let Some((x, y)) = coords {
+                format!("show:{x},{y}")
+            } else {
+                "show".to_string()
+            };
+            if try_send_command(&msg)? {
                 return Ok(());
             }
-            // No instance running, will start GUI with window shown below
         }
         Commands::Daemon => {
             if try_send_command("refresh")? {
@@ -97,9 +107,10 @@ bar = [
         // Prevent auto-exit when window is hidden
         let _hold_guard = app.hold();
 
+        let initial_coords = get_cursor_pos();
         let widget = TodoWidget::build(app);
         if start_shown {
-            widget.show_window();
+            widget.show_window(initial_coords);
         } else {
             widget.hide_window();
         }
@@ -114,8 +125,8 @@ bar = [
                     let _ = &_hold_guard;
                     while let Ok(cmd) = rx.try_recv() {
                         match cmd {
-                            IpcCommand::Toggle => widget_clone.toggle_visibility(),
-                            IpcCommand::Show => widget_clone.show_window(),
+                            IpcCommand::Toggle(coords) => widget_clone.toggle_visibility(coords),
+                            IpcCommand::Show(coords) => widget_clone.show_window(coords),
                             IpcCommand::Hide => widget_clone.hide_window(),
                             IpcCommand::Refresh => widget_clone.refresh(),
                             IpcCommand::Quit => {

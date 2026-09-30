@@ -246,18 +246,61 @@ impl TodoWidget {
         widget
     }
 
-    pub fn toggle_visibility(&self) {
+    pub fn update_position(&self, coords: Option<(i32, i32)>) {
+        let Some((cx, cy)) = coords else {
+            self.window.set_anchor(Edge::Right, true);
+            self.window.set_anchor(Edge::Left, false);
+            self.window.set_margin(Edge::Top, 28);
+            self.window.set_margin(Edge::Right, 12);
+            return;
+        };
+
+        if let Some(display) = gtk4::gdk::Display::default() {
+            let monitors = display.monitors();
+            for i in 0..monitors.n_items() {
+                if let Some(monitor) = monitors.item(i).and_downcast::<gtk4::gdk::Monitor>() {
+                    let geom = monitor.geometry();
+                    if cx >= geom.x()
+                        && cx < geom.x() + geom.width()
+                        && cy >= geom.y()
+                        && cy < geom.y() + geom.height()
+                    {
+                        self.window.set_monitor(Some(&monitor));
+                        let local_x = cx - geom.x();
+                        let popup_width = 380;
+                        let max_margin = (geom.width() - popup_width - 10).max(10);
+                        let target_x = (local_x - (popup_width / 2)).clamp(10, max_margin);
+
+                        self.window.set_anchor(Edge::Left, true);
+                        self.window.set_anchor(Edge::Right, false);
+                        self.window.set_margin(Edge::Left, target_x);
+                        self.window.set_margin(Edge::Top, 28);
+                        return;
+                    }
+                }
+            }
+        }
+
+        self.window.set_anchor(Edge::Right, true);
+        self.window.set_anchor(Edge::Left, false);
+        self.window.set_margin(Edge::Top, 28);
+        self.window.set_margin(Edge::Right, 12);
+    }
+
+    pub fn toggle_visibility(&self, coords: Option<(i32, i32)>) {
         let is_vis = self.window.is_visible();
         if is_vis {
             self.window.set_visible(false);
         } else {
+            self.update_position(coords);
             self.refresh();
             self.window.set_visible(true);
             self.window.present();
         }
     }
 
-    pub fn show_window(&self) {
+    pub fn show_window(&self, coords: Option<(i32, i32)>) {
+        self.update_position(coords);
         self.refresh();
         self.window.set_visible(true);
         self.window.present();
