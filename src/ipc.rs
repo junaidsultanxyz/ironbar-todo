@@ -22,7 +22,7 @@ pub enum IpcCommand {
 }
 
 impl IpcCommand {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
         match s.trim().to_lowercase().as_str() {
             "toggle" => Some(Self::Toggle),
             "show" | "open" => Some(Self::Show),
@@ -72,12 +72,15 @@ pub fn start_ipc_server() -> Result<Receiver<IpcCommand>, Box<dyn std::error::Er
                 Ok(stream) => {
                     let mut reader = BufReader::new(stream);
                     let mut line = String::new();
-                    if let Ok(_) = reader.read_line(&mut line) {
-                        if let Some(cmd) = IpcCommand::from_str(&line) {
-                            if tx.send(cmd).is_err() {
+                    match reader.read_line(&mut line) {
+                        Ok(_) => {
+                            if let Some(cmd) = IpcCommand::from_string(&line)
+                                && tx.send(cmd).is_err()
+                            {
                                 break;
                             }
                         }
+                        Err(_) => todo!(),
                     }
                 }
                 Err(e) => {

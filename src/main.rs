@@ -4,13 +4,13 @@ pub mod todo_cli;
 pub mod ui;
 
 use clap::{Parser, Subcommand};
+use gtk4::Application;
 use gtk4::glib::{self, ControlFlow};
 use gtk4::prelude::*;
-use gtk4::Application;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::ipc::{start_ipc_server, try_send_command, IpcCommand};
+use crate::ipc::{IpcCommand, start_ipc_server, try_send_command};
 use crate::style::load_css;
 use crate::ui::TodoWidget;
 

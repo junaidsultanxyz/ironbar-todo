@@ -68,10 +68,10 @@ impl TodoClient {
             }
 
             // Expected format: "[false] <id> | <title>" or "[true] <id> | <title>"
-            if let Some(task_type) = current_type {
-                if let Some(task) = Self::parse_task_line(trimmed, task_type) {
-                    tasks.push(task);
-                }
+            if let Some(task_type) = current_type
+                && let Some(task) = Self::parse_task_line(trimmed, task_type)
+            {
+                tasks.push(task);
             }
         }
 
@@ -119,7 +119,9 @@ impl TodoClient {
         }
         cmd.arg(name);
 
-        let output = cmd.output().map_err(|e| format!("Failed to run `todo add`: {e}"))?;
+        let output = cmd
+            .output()
+            .map_err(|e| format!("Failed to run `todo add`: {e}"))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!("`todo add` failed: {stderr}"));
@@ -207,17 +209,17 @@ mod tests {
 
         assert_eq!(tasks[0].id, "whlrf_bB0WZLq60Hb9306");
         assert_eq!(tasks[0].title, "add daily resets to todo app");
-        assert_eq!(tasks[0].is_completed, false);
+        assert!(!tasks[0].is_completed);
         assert_eq!(tasks[0].task_type, TaskType::Basic);
 
         assert_eq!(tasks[1].id, "999xyz");
         assert_eq!(tasks[1].title, "finished task");
-        assert_eq!(tasks[1].is_completed, true);
+        assert!(tasks[1].is_completed);
         assert_eq!(tasks[1].task_type, TaskType::Basic);
 
         assert_eq!(tasks[2].id, "yoGtTjI1OH-01h5DORllq");
         assert_eq!(tasks[2].title, "client hunting");
-        assert_eq!(tasks[2].is_completed, false);
+        assert!(!tasks[2].is_completed);
         assert_eq!(tasks[2].task_type, TaskType::Daily);
     }
 

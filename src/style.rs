@@ -1,5 +1,5 @@
-use gtk4::gdk::Display;
 use gtk4::CssProvider;
+use gtk4::gdk::Display;
 use std::fs;
 use std::path::PathBuf;
 
@@ -215,11 +215,11 @@ checkbutton:checked check {
     // If ~/.config/ironbar/style.css exists, append it so user overrides/colors are respected!
     if let Some(home) = std::env::var_os("HOME") {
         let ironbar_css_path = PathBuf::from(home).join(".config/ironbar/style.css");
-        if ironbar_css_path.exists() {
-            if let Ok(custom_css) = fs::read_to_string(&ironbar_css_path) {
-                css_data.push_str("\n/* User Ironbar CSS */\n");
-                css_data.push_str(&custom_css);
-            }
+        if ironbar_css_path.exists()
+            && let Ok(custom_css) = fs::read_to_string(&ironbar_css_path)
+        {
+            css_data.push_str("\n/* User Ironbar CSS */\n");
+            css_data.push_str(&custom_css);
         }
     }
 
