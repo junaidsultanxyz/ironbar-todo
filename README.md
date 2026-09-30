@@ -2,19 +2,8 @@
 
 A sleek, lightweight GTK4 layer-shell floating module and popup for [Ironbar](https://github.com/JakeStanger/ironbar), integrating with your Rust `todo` CLI.
 
-## Features
+<img width="407" height="529" alt="image" src="https://github.com/user-attachments/assets/e0a337fd-5df5-452d-9e0e-c75293ea7638" />
 
-- **Ironbar Integration**: Appears as a clickable `"todo"` button in Ironbar that opens a floating panel relative to the bar.
-- **Task Grouping**: Separates tasks into **Remaining** and **Completed** sections with live counts.
-- **Task Type Toggles**: Filter tasks by `basic`, `daily`, or both simultaneously with quick toggle buttons.
-- **Interactive Controls**:
-  - Complete and uncomplete tasks directly via checkboxes.
-  - Delete individual tasks with a single click (`✕`).
-  - Clear all tasks (`Clear All`) via header control.
-- **Add Tasks on the Fly**: Bottom input field with task name input, task type dropdown (`Basic` / `Daily`), and `Add` button (or press `Enter`).
-- **Instant IPC & Sub-Millisecond Toggle**: Background daemon with Unix domain socket for instant toggling on click.
-- **Ironbar Theming**: Automatically adheres to your system's Ironbar styling (`~/.config/ironbar/style.css`) and defaults to a matching dark minimalist theme.
-- **Dismissable**: Close with `Esc`, the close button (`✕`), or by clicking the Ironbar button again to toggle.
 
 ## Requirements
 
@@ -26,6 +15,8 @@ A sleek, lightweight GTK4 layer-shell floating module and popup for [Ironbar](ht
 ## Installation
 
 ```bash
+git clone https://github.com/junaidsultanxyz/ironbar-todo
+cd ironbar-todo
 cargo install --path .
 ```
 
@@ -36,7 +27,7 @@ This installs the binary to `~/.cargo/bin/ironbar-todo`. Ensure `~/.cargo/bin` i
 Add the following to your Ironbar configuration file (`~/.config/ironbar/config.toml`):
 
 ```toml
-[[end]]
+[[start]]
 type = "custom"
 class = "todo-btn"
 bar = [
