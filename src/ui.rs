@@ -362,7 +362,7 @@ impl TodoWidget {
                 completed_header,
             );
 
-            if task.is_completed {
+            if task.is_completed() {
                 completed_count += 1;
                 completed_box.append(&row);
             } else {
@@ -399,15 +399,15 @@ impl TodoWidget {
     ) -> Box {
         let row = Box::new(Orientation::Horizontal, 6);
         row.add_css_class("task-row");
-        if task.is_completed {
+        if task.is_completed() {
             row.add_css_class("completed");
         }
 
         let check = CheckButton::new();
-        check.set_active(task.is_completed);
+        check.set_active(task.is_completed());
 
         let task_id = task.id.clone();
-        let is_completed = task.is_completed;
+        let is_completed = task.is_completed();
         let state_tgl = Rc::clone(state_rc);
         let rem_box = remaining_box.clone();
         let com_box = completed_box.clone();
