@@ -44,7 +44,7 @@ pub enum IpcCommand {
 }
 
 impl IpcCommand {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
         let trimmed = s.trim();
         if trimmed.starts_with("toggle") {
             let rest = trimmed.strip_prefix("toggle").unwrap_or("");
@@ -119,12 +119,14 @@ pub fn start_ipc_server() -> Result<Receiver<IpcCommand>, Box<dyn std::error::Er
                 Ok(stream) => {
                     let mut reader = BufReader::new(stream);
                     let mut line = String::new();
-                    if let Ok(_) = reader.read_line(&mut line) {
-                        if let Some(cmd) = IpcCommand::from_str(&line) {
-                            if tx.send(cmd).is_err() {
-                                break;
-                            }
+                    match reader.read_line(&mut line) {
+                        Ok(_)
+                            if let Some(cmd) = IpcCommand::from_string(&line)
+                                && tx.send(cmd).is_err() =>
+                        {
+                            break;
                         }
+                        _ => (),
                     }
                 }
                 Err(e) => {
@@ -145,19 +147,22 @@ mod tests {
     #[test]
     fn test_ipc_command_parsing() {
         assert_eq!(
-            IpcCommand::from_str("toggle"),
+            IpcCommand::from_string("toggle"),
             Some(IpcCommand::Toggle(None))
         );
         assert_eq!(
-            IpcCommand::from_str("toggle:500,20"),
+            IpcCommand::from_string("toggle:500,20"),
             Some(IpcCommand::Toggle(Some((500, 20))))
         );
         assert_eq!(
-            IpcCommand::from_str("show:100,50"),
+            IpcCommand::from_string("show:100,50"),
             Some(IpcCommand::Show(Some((100, 50))))
         );
-        assert_eq!(IpcCommand::from_str("hide"), Some(IpcCommand::Hide));
-        assert_eq!(IpcCommand::from_str("refresh"), Some(IpcCommand::Refresh));
-        assert_eq!(IpcCommand::from_str("quit"), Some(IpcCommand::Quit));
+        assert_eq!(IpcCommand::from_string("hide"), Some(IpcCommand::Hide));
+        assert_eq!(
+            IpcCommand::from_string("refresh"),
+            Some(IpcCommand::Refresh)
+        );
+        assert_eq!(IpcCommand::from_string("quit"), Some(IpcCommand::Quit));
     }
 }
